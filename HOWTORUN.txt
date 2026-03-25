@@ -1,0 +1,16 @@
+FRONTEND
+
+cd frontend
+npm run dev
+
+
+
+
+
+BACKEND
+
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install fastapi uvicorn transformers torch
+uvicorn app.main:app --reload
