@@ -11,6 +11,7 @@ export default function NamedEntityPage() {
   const [output, setOutput] = useState<PredictionResponse | null>(null)
   const [spans, setSpans] = useState<EntitySpan[]>([])
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [inputText, setInputText] = useState<string>("")
 
   const mergeTokensToSpans = (tokens: Token[], fullText: string): EntitySpan[] => {
   const merged: EntitySpan[] = []
@@ -58,38 +59,80 @@ export default function NamedEntityPage() {
   return (
     <>
       <CollapsibleSection title="Input Section">
-        <InputSection setOutput={handlePrediction} />
+        <InputSection
+  text={inputText}
+  setText={setInputText}
+  setOutput={handlePrediction}
+/>
       </CollapsibleSection>
 
       <CollapsibleSection title="Output Section">
-  <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+  <div
+    style={{
+      display: "flex",
+      gap: "20px",
+      minHeight: "70vh",
+    }}
+  >
 
-    {/* LEFT: OUTPUT */}
-    <div style={{ flex: 2 }}>
-      <OutputSection
-        data={output}
+    {/* 🔹 LEFT — OUTPUT (Scrollable) */}
+   <div
+  style={{
+    flex: 3,
+    display: "flex",
+    flexDirection: "column",
+    maxHeight: "80vh",
+  }}
+>
+  {/* 🔹 SCROLLABLE OUTPUT ONLY */}
+  <div
+    style={{
+      flex: 1,
+      overflowY: "auto",
+      paddingRight: "10px",
+      borderRight: "1px solid #444",
+    }}
+  >
+    <OutputSection
+      data={output}
+      spans={spans}
+      selectedIndex={selectedIndex}
+      setSelectedIndex={setSelectedIndex}
+    />
+  </div>
+
+  {/* 🔹 FIXED BUTTON BELOW */}
+  {output && (
+    <div style={{ marginTop: "10px" }}>
+      <ExportButton
         spans={spans}
-        selectedIndex={selectedIndex}
-        setSelectedIndex={setSelectedIndex}
+        tokens={output.tokens}
+        text={output.text}
       />
-      {output && (
-        <ExportButton
-  spans={spans}
-  tokens={output.tokens}
-  text={output.text}
-/>
-      )}
     </div>
+  )}
+</div>
 
-    {/* RIGHT: PANEL */}
-    <div style={{ flex: 1, maxHeight: "70vh", overflowY: "auto" }}>
+    {/* 🔹 RIGHT — FIXED SIDEBAR */}
+    <div
+      style={{
+        flex: 1,
+        minWidth: "300px",
+        maxWidth: "350px",
+        overflowY: "auto",
+        paddingLeft: "10px",
+      }}
+    >
       <AssignPanel
         spans={spans}
         selectedIndex={selectedIndex}
         setSpans={setSpans}
       />
 
-      <AssignedEntitiesPanel spans={spans} setSpans={setSpans} />
+      <AssignedEntitiesPanel
+        spans={spans}
+        setSpans={setSpans}
+      />
     </div>
 
   </div>

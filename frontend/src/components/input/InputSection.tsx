@@ -1,13 +1,13 @@
-import { useState } from "react"
 import { predictText } from "../../services/api"
 import type { PredictionResponse } from "../../types"
 
 interface Props {
+  text: string
+  setText: (text: string) => void
   setOutput: (data: PredictionResponse) => void
 }
 
-export default function InputSection({ setOutput }: Props) {
-  const [text, setText] = useState<string>("")
+export default function InputSection({ text, setText, setOutput }: Props) {
 
   const handleSubmit = async () => {
     if (!text.trim()) return

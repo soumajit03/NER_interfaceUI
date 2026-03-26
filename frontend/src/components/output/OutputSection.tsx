@@ -32,10 +32,19 @@ export default function OutputSection({
       : null
 
   return (
-    <div style={{ flex: 2 }}>
+    <div style={{ flex: 2, maxHeight: "100%"}}>
       <h3>NER Output</h3>
 
-      <div style={{ lineHeight: "2.5", fontSize: "16px" }}>
+      <div
+  style={{
+    lineHeight: "2.2",
+    fontSize: "15px",
+    wordSpacing: "2px",
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    scrollBehavior: "smooth",
+  }}
+>
         {tokens.map((token, index) => {
           // ✅ O tokens (normal text)
           if (token.bio_label === "O") {
@@ -69,22 +78,23 @@ export default function OutputSection({
               key={index}
               onClick={() => setSelectedIndex(spanIndex)}
               style={{
-                marginRight: "6px",
-                backgroundColor: getColor(span.bio_label),
-                padding: "4px 10px",
-                borderRadius: "6px",
-                cursor: "pointer",
+  marginRight: "6px",
+  marginBottom: "6px",
+  backgroundColor: getColor(span.bio_label),
+  padding: "3px 8px",
+  borderRadius: "6px",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
 
-                // 🔥 Multi-highlight + main highlight
-                border: isSameWord ? "2px solid white" : "none",
-                boxShadow: isExactSelected
-                  ? "0 0 8px rgba(255,255,255,0.8)"
-                  : "none",
+  border: isSameWord ? "2px solid white" : "none",
+  boxShadow: isExactSelected
+    ? "0 0 8px rgba(255,255,255,0.8)"
+    : "none",
 
-                transform: isExactSelected ? "scale(1.05)" : "scale(1)",
-
-                transition: "all 0.2s ease",
-              }}
+  transform: isExactSelected ? "scale(1.05)" : "scale(1)",
+  transition: "all 0.2s ease",
+}}
             >
               {span.text}
 

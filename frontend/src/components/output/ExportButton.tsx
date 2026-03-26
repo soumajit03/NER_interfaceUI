@@ -50,14 +50,15 @@ export default function ExportButton({ spans, tokens, text }: Props) {
     <button
       onClick={handleExport}
       style={{
-        marginTop: "15px",
-        padding: "10px",
-        background: "#2d89ef",
-        color: "white",
-        border: "none",
-        borderRadius: "6px",
-        cursor: "pointer"
-      }}
+  padding: "10px 16px",
+  background: "#2d89ef",
+  color: "white",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+  fontWeight: "bold",
+  width: "fit-content",
+}}
     >
       Export JSON
     </button>
