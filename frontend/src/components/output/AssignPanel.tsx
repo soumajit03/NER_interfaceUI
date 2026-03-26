@@ -49,13 +49,22 @@ export default function AssignPanel({
   const selectedSpan = spans[selectedIndex]
 
   const updateField = (
-    field: "assigned_tag" | "assigned_gender",
-    value: string
-  ) => {
-    const updated = [...spans]
-    updated[selectedIndex][field] = value
-    setSpans(updated)
-  }
+  field: "assigned_tag" | "assigned_gender",
+  value: string
+) => {
+  const updated = [...spans]
+
+  const selectedText = updated[selectedIndex].text.toLowerCase()
+
+  // 🔥 Apply to ALL matching words
+  updated.forEach((span) => {
+    if (span.text.toLowerCase() === selectedText) {
+      span[field] = value
+    }
+  })
+
+  setSpans(updated)
+}
 
   return (
     <div style={{ flex: 1, padding: "10px" }}>

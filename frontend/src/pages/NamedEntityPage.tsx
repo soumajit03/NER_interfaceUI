@@ -12,45 +12,45 @@ export default function NamedEntityPage() {
   const [spans, setSpans] = useState<EntitySpan[]>([])
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
-  const mergeTokensToSpans = (tokens: Token[]): EntitySpan[] => {
-    const merged: EntitySpan[] = []
-    let current: EntitySpan | null = null
+  const mergeTokensToSpans = (tokens: Token[], fullText: string): EntitySpan[] => {
+  const merged: EntitySpan[] = []
+  let current: EntitySpan | null = null
 
-    tokens.forEach((token) => {
-      if (token.bio_label.startsWith("B-")) {
-        if (current) merged.push(current)
+  tokens.forEach((token) => {
+    if (token.bio_label.startsWith("B-")) {
+      if (current) merged.push(current)
 
-        current = {
-          text: token.text,
-          start: token.start,
-          end: token.end,
-          bio_label: token.bio_label,
-          assigned_tag: null,
-          assigned_gender: null,
-        }
+      current = {
+        text: fullText.slice(token.start, token.end),
+        start: token.start,
+        end: token.end,
+        bio_label: token.bio_label,
+        assigned_tag: null,
+        assigned_gender: null,
       }
+    }
 
-      else if (token.bio_label.startsWith("I-") && current) {
-        current.text += " " + token.text
-        current.end = token.end
+    else if (token.bio_label.startsWith("I-") && current) {
+      current.end = token.end
+      current.text = fullText.slice(current.start, current.end)
+    }
+
+    else {
+      if (current) {
+        merged.push(current)
+        current = null
       }
+    }
+  })
 
-      else {
-        if (current) {
-          merged.push(current)
-          current = null
-        }
-      }
-    })
+  if (current) merged.push(current)
 
-    if (current) merged.push(current)
-
-    return merged
-  }
+  return merged
+}
 
   const handlePrediction = (data: PredictionResponse) => {
     setOutput(data)
-    const mergedSpans = mergeTokensToSpans(data.tokens)
+    const mergedSpans = mergeTokensToSpans(data.tokens, data.text)
     setSpans(mergedSpans)
     setSelectedIndex(null)
   }
@@ -73,7 +73,11 @@ export default function NamedEntityPage() {
         setSelectedIndex={setSelectedIndex}
       />
       {output && (
-        <ExportButton spans={spans} text={output.text} />
+        <ExportButton
+  spans={spans}
+  tokens={output.tokens}
+  text={output.text}
+/>
       )}
     </div>
 

@@ -1,6 +1,5 @@
 import type { PredictionResponse, EntitySpan } from "../../types"
 
-
 interface Props {
   data: PredictionResponse | null
   spans: EntitySpan[]
@@ -26,13 +25,19 @@ export default function OutputSection({
 
   const tokens = data.tokens
 
+  // 🔥 Selected word (case-insensitive)
+  const selectedText =
+    selectedIndex !== null
+      ? spans[selectedIndex].text.toLowerCase()
+      : null
+
   return (
     <div style={{ flex: 2 }}>
       <h3>NER Output</h3>
 
       <div style={{ lineHeight: "2.5", fontSize: "16px" }}>
         {tokens.map((token, index) => {
-          // NORMAL TEXT
+          // ✅ O tokens (normal text)
           if (token.bio_label === "O") {
             return (
               <span key={index} style={{ marginRight: "6px" }}>
@@ -41,10 +46,10 @@ export default function OutputSection({
             )
           }
 
-          // SKIP I- tokens (already merged)
+          // ❌ Skip I- tokens
           if (token.bio_label.startsWith("I-")) return null
 
-          // FIND MATCHING SPAN
+          // 🔍 Find span
           const spanIndex = spans.findIndex(
             (s) => s.start === token.start
           )
@@ -52,6 +57,12 @@ export default function OutputSection({
           if (spanIndex === -1) return null
 
           const span = spans[spanIndex]
+
+          const isSameWord =
+            selectedText &&
+            span.text.toLowerCase() === selectedText
+
+          const isExactSelected = selectedIndex === spanIndex
 
           return (
             <span
@@ -63,13 +74,20 @@ export default function OutputSection({
                 padding: "4px 10px",
                 borderRadius: "6px",
                 cursor: "pointer",
-                border:
-                  selectedIndex === spanIndex
-                    ? "2px solid white"
-                    : "none",
+
+                // 🔥 Multi-highlight + main highlight
+                border: isSameWord ? "2px solid white" : "none",
+                boxShadow: isExactSelected
+                  ? "0 0 8px rgba(255,255,255,0.8)"
+                  : "none",
+
+                transform: isExactSelected ? "scale(1.05)" : "scale(1)",
+
+                transition: "all 0.2s ease",
               }}
             >
               {span.text}
+
               <span
                 style={{
                   background: "#222",

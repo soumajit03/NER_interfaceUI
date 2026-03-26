@@ -1,16 +1,36 @@
-import type { EntitySpan } from "../../types"
+import type { EntitySpan, Token } from "../../types"
 
 interface Props {
   spans: EntitySpan[]
+  tokens: Token[]
   text: string
 }
 
-export default function ExportButton({ spans, text }: Props) {
+export default function ExportButton({ spans, tokens, text }: Props) {
 
   const handleExport = () => {
+
+    const enrichedTokens = tokens.map((token) => {
+      // Find matching span
+      const match = spans.find(
+        (span) =>
+          token.start >= span.start &&
+          token.end <= span.end
+      )
+
+      return {
+        text: token.text,
+        start: token.start,
+        end: token.end,
+        bio_label: token.bio_label,
+        assigned_tag: match?.assigned_tag || null,
+        assigned_gender: match?.assigned_gender || null,
+      }
+    })
+
     const data = {
       text,
-      entities: spans
+      tokens: enrichedTokens
     }
 
     const blob = new Blob(

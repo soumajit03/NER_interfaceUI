@@ -6,7 +6,7 @@ interface Props {
 export default function MainTabs({ activeTab, setActiveTab }: Props) {
   const tabs = [
     "Named Entity Annotation",
-    "Relationship Annotation",
+    // "Relationship Annotation",
     // "Event Entity Annotation",
   ]
 
