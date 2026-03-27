@@ -21,3 +21,11 @@ export interface EntitySpan {
   assigned_gender: string | null
 }
 
+export interface PredictionHistoryItem {
+  id: string
+  input_text: string
+  output_tokens: Token[]
+  source_file_path: string | null
+  created_at: string
+}
+

@@ -1,6 +1,14 @@
 FRONTEND
 
 cd frontend
+npm install
+
+Copy .env.example to .env and set:
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- VITE_API_BASE_URL (optional, defaults to http://127.0.0.1:8000/api)
+- VITE_AUTH_REDIRECT_URL (optional, defaults to current origin)
+
 npm run dev
 
 
@@ -12,5 +20,55 @@ BACKEND
 cd backend
 python -m venv venv
 venv\Scripts\activate
-pip install fastapi uvicorn transformers torch
-uvicorn app.main:app --reload
+pip install -r requirements-auth.txt
+# If you use the existing requirements.txt, install from that as needed.
+
+Copy .env.example to .env and set:
+- SUPABASE_JWT_SECRET
+- FRONTEND_ORIGIN
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+
+uvicorn app.main:app --reload --env-file .env
+
+
+SUPABASE PROJECT SETUP (required for auth + file upload)
+
+1. In Supabase Auth > Providers:
+	- Enable Email
+	- Enable Google OAuth
+	- Enable GitHub OAuth
+
+2. In Supabase Authentication URL configuration:
+	- Add site URL: http://127.0.0.1:5173
+	- Add redirect URL: http://127.0.0.1:5173
+
+3. In Supabase Storage:
+	- Create bucket: ner-uploads
+	- Set access policies so authenticated users can upload/read only their own folder path (user_id prefix)
+
+4. In Supabase SQL Editor:
+	- Run backend/supabase_init.sql to create public tables and RLS policies.
+
+
+GOOGLE OAUTH SETUP (your actions)
+
+1. Open Google Cloud Console and create/select a project.
+2. Configure OAuth consent screen (External or Internal based on your need).
+3. Create OAuth Client ID of type "Web application".
+4. Add Authorized JavaScript origins:
+	- http://127.0.0.1:5173
+	- http://localhost:5173
+5. Add Authorized redirect URI:
+	- https://<your-supabase-project-ref>.supabase.co/auth/v1/callback
+6. Copy Client ID and Client Secret to Supabase Auth > Providers > Google.
+
+
+GITHUB OAUTH SETUP (your actions)
+
+1. Open GitHub Developer Settings > OAuth Apps > New OAuth App.
+2. Set Homepage URL:
+	- http://127.0.0.1:5173
+3. Set Authorization callback URL:
+	- https://<your-supabase-project-ref>.supabase.co/auth/v1/callback
+4. Copy Client ID and Client Secret to Supabase Auth > Providers > GitHub.
