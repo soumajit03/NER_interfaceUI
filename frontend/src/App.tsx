@@ -3,9 +3,11 @@ import type { Session } from "@supabase/supabase-js"
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import NamedEntityPage from "./pages/NamedEntityPage"
 import HistoryPage from "./pages/HistoryPage"
+import ModelPerformancePage from "./pages/ModelPerformancePage"
 import AuthPage from "./pages/AuthPage"
 import LandingPage from "./pages/LandingPage"
 import { supabase } from "./lib/supabase"
+import { Brain } from "lucide-react"
 
 export default function App() {
   const navigate = useNavigate()
@@ -59,15 +61,15 @@ export default function App() {
 
   if (loadingSession) {
     return (
-      <div className="overlay" style={{ display: "grid", placeItems: "center" }}>
-        <div className="section-container">Loading session...</div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-500 font-medium animate-pulse">Loading session...</div>
       </div>
     )
   }
 
   const landing = (
     <>
-      <div className="overlay">
+      <div className="min-h-screen bg-slate-50">
         <LandingPage
           isAuthenticated={Boolean(session)}
           userEmail={session?.user.email}
@@ -108,17 +110,40 @@ export default function App() {
     }
 
     return (
-      <div className="overlay">
-        <div className="app-header">
-          <div>
-            <button className="brand-home-link" onClick={() => navigate("/")}>Mythology NER Studio</button>
-            <h1>Welcome {session.user.email}</h1>
+      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+        {/* Sleek Light Theme Header */}
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+            <Brain className="size-6 text-primary" />
+            <span className="font-bold text-lg tracking-tight">MythosNER</span>
           </div>
-          <div className="app-header-actions">
-            <button className="ghost-btn" onClick={() => navigate("/app/dashboard")}>Dashboard</button>
-            <button className="ghost-btn" onClick={() => navigate("/app/history")}>History</button>
+          
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-500 hidden md:block">
+              {session.user.email}
+            </span>
+            <nav className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button 
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${location.pathname.includes('dashboard') ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                onClick={() => navigate("/app/dashboard")}
+              >
+                Workspace
+              </button>
+              <button 
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${location.pathname.includes('history') ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                onClick={() => navigate("/app/history")}
+              >
+                History
+              </button>
+              <button 
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${location.pathname.includes('performance') ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                onClick={() => navigate("/app/performance")}
+              >
+                Performance
+              </button>
+            </nav>
             <button
-              className="ghost-btn"
+              className="ml-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
               onClick={() => {
                 supabase.auth.signOut()
                 navigate("/", { replace: true })
@@ -127,8 +152,12 @@ export default function App() {
               Sign out
             </button>
           </div>
-        </div>
-        {content}
+        </header>
+
+        {/* Workspace Content */}
+        <main className="flex-1">
+          {content}
+        </main>
       </div>
     )
   }
@@ -149,6 +178,7 @@ export default function App() {
           />,
         )}
       />
+      <Route path="/app/performance" element={workspaceShell(<ModelPerformancePage />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

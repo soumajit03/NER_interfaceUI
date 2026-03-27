@@ -1,5 +1,11 @@
 import axios from "axios"
-import type { PredictionResponse } from "../types"
+import type {
+  BenchmarkPerformanceResponse,
+  FeedbackEditEvent,
+  FeedbackMetricsResponse,
+  LiveHealthResponse,
+  PredictionResponse,
+} from "../types"
 import { supabase } from "../lib/supabase"
 
 const API = axios.create({
@@ -20,3 +26,15 @@ API.interceptors.request.use(async (config) => {
 
 export const predictText = (text: string) =>
   API.post<PredictionResponse>("/predict", { text })
+
+export const getBenchmarkPerformance = () =>
+  API.get<BenchmarkPerformanceResponse>("/model/performance/benchmark")
+
+export const getLivePerformance = () =>
+  API.get<LiveHealthResponse>("/model/performance/live")
+
+export const saveFeedbackEdits = (events: FeedbackEditEvent[]) =>
+  API.post<{ saved: number }>("/feedback/edits", { events })
+
+export const getFeedbackPerformance = () =>
+  API.get<FeedbackMetricsResponse>("/model/performance/feedback")

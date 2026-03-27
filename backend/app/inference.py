@@ -40,12 +40,23 @@ def predict_text(text: str):
             global_start = start + i
             global_end = end + i
 
+            piece_text = text[global_start:global_end]
+            bio_label = id2label[label_id]
+
+            # Merge WordPiece continuation tokens (e.g. "Sit" + "##a")
+            # so API consumers receive stable, word-level tokens.
+            if token.startswith("##") and all_tokens:
+                previous = all_tokens[-1]
+                if int(previous["end"]) == int(global_start):
+                    previous["text"] += piece_text
+                    previous["end"] = int(global_end)
+                    continue
+
             all_tokens.append({
-                "text": text[global_start:global_end],
+                "text": piece_text,
                 "start": int(global_start),
                 "end": int(global_end),
-                "bio_label": id2label[label_id],
-                "assigned_tag": None,
+                "bio_label": bio_label,
                 "assigned_gender": None
             })
 

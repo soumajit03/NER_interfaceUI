@@ -5,175 +5,111 @@ interface Props {
   spans: EntitySpan[]
   selectedIndex: number | null
   setSpans: (spans: EntitySpan[]) => void
+  onApplyBioLabel: (selectedIndex: number, nextBioLabel: string) => void
 }
 
-const TAG_OPTIONS = [
-  "CHARACTER",
-  "COLOR",
-  "DISEASE",
-  "EVENT",
-  "FACILITY",
-  "GROUP",
-  "LANGUAGE",
-  "LOCATION",
-  "NATURAL_OBJECT",
-  "NUM",
+const BIO_OPTIONS = [
+  "O",
+  "B-MYTH",
+  "I-MYTH",
+  "B-GEO",
+  "I-GEO",
+  "B-LOC",
+  "I-LOC",
+  "B-ORG",
+  "I-ORG",
 ]
 
 const GENDER_OPTIONS = [
-  "MALE",
-  "FEMALE",
-  "EUNUCH",
-  "BISEXUAL",
-  "TRANSGENDER",
-  "UNSPECIFIED",
+  "MALE", "FEMALE", "EUNUCH", "BISEXUAL", "TRANSGENDER", "UNSPECIFIED",
 ]
 
-export default function AssignPanel({
-  spans,
-  selectedIndex,
-  setSpans,
-}: Props) {
+export default function AssignPanel({ spans, selectedIndex, setSpans, onApplyBioLabel }: Props) {
   const [activeTab, setActiveTab] = useState<"tag" | "gender">("tag")
 
-  // 🔴 No entity selected
   if (selectedIndex === null) {
     return (
-      <div style={{ flex: 1, padding: "10px" }}>
-        <h4>Assign Panel</h4>
-        <p style={{ opacity: 0.7 }}>Select an entity to begin</p>
+      <div className="py-8 text-center border-2 border-dashed border-slate-200 rounded-lg">
+        <p className="text-sm text-slate-500">Select a highlighted entity<br/>in the output to assign properties.</p>
       </div>
     )
   }
 
   const selectedSpan = spans[selectedIndex]
 
-  const updateField = (
-  field: "assigned_tag" | "assigned_gender",
-  value: string
-) => {
-  const updated = [...spans]
+  const updateField = (field: "assigned_gender", value: string) => {
+    const updated = [...spans]
+    const selectedText = updated[selectedIndex].text.toLowerCase()
 
-  const selectedText = updated[selectedIndex].text.toLowerCase()
+    updated.forEach((span) => {
+      if (span.text.toLowerCase() === selectedText) {
+        span[field] = value
+      }
+    })
 
-  // 🔥 Apply to ALL matching words
-  updated.forEach((span) => {
-    if (span.text.toLowerCase() === selectedText) {
-      span[field] = value
-    }
-  })
-
-  setSpans(updated)
-}
+    setSpans(updated)
+  }
 
   return (
-    <div style={{ flex: 1, padding: "10px" }}>
+    <div className="space-y-5">
       
-      {/* 🔹 SUB-TABS */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
+      {/* Segmented Control Tabs */}
+      <div className="flex p-1 space-x-1 bg-slate-100 rounded-lg">
         <button
           onClick={() => setActiveTab("tag")}
-          style={{
-            padding: "8px 14px",
-            borderRadius: "20px",
-            border: "none",
-            cursor: "pointer",
-            background: activeTab === "tag" ? "#2d89ef" : "#444",
-            color: "white",
-            fontSize: "13px",
-          }}
+          className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+            activeTab === "tag" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+          }`}
         >
-          Assign Tag
+          Assign BIO Label
         </button>
-
         <button
           onClick={() => setActiveTab("gender")}
-          style={{
-            padding: "8px 14px",
-            borderRadius: "20px",
-            border: "none",
-            cursor: "pointer",
-            background: activeTab === "gender" ? "#2d89ef" : "#444",
-            color: "white",
-            fontSize: "13px",
-          }}
+          className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+            activeTab === "gender" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+          }`}
         >
           Assign Gender
         </button>
       </div>
 
-      {/* 🔹 SELECTED ENTITY */}
-      <div
-        style={{
-          marginBottom: "15px",
-          padding: "10px",
-          background: "#2b2b2b",
-          borderRadius: "8px",
-          fontWeight: "bold",
-        }}
-      >
-        {selectedSpan.text}
+      {/* Selected Entity Display */}
+      <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-md">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Editing Entity</span>
+        <span className="font-bold text-slate-900 text-lg">{selectedSpan.text}</span>
       </div>
 
-      {/* 🔹 TAG SECTION */}
-      {activeTab === "tag" && (
-        <div>
-          <h5 style={{ marginBottom: "8px" }}>Assign Tag</h5>
+      {/* Options Grid */}
+      <div>
+        <div className="flex flex-wrap gap-2">
+          {(activeTab === "tag" ? BIO_OPTIONS : GENDER_OPTIONS).map((option) => {
+            const isSelected = activeTab === "tag" 
+              ? selectedSpan.bio_label === option
+              : selectedSpan.assigned_gender === option;
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {TAG_OPTIONS.map((tag) => (
+            return (
               <button
-                key={tag}
-                onClick={() => updateField("assigned_tag", tag)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "20px",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  background:
-                    selectedSpan.assigned_tag === tag
-                      ? "#2d89ef"
-                      : "#444",
-                  color: "white",
-                }}
+                key={option}
+                onClick={() =>
+                  activeTab === "tag"
+                    ? onApplyBioLabel(selectedIndex, option)
+                    : updateField("assigned_gender", option)
+                }
+                className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
+                  isSelected
+                    ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                    : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                }`}
               >
-                {tag}
+                {option}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      )}
-
-      {/* 🔹 GENDER SECTION */}
-      {activeTab === "gender" && (
-        <div>
-          <h5 style={{ marginBottom: "8px" }}>Assign Gender</h5>
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {GENDER_OPTIONS.map((gender) => (
-              <button
-                key={gender}
-                onClick={() => updateField("assigned_gender", gender)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "20px",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  background:
-                    selectedSpan.assigned_gender === gender
-                      ? "#2d89ef"
-                      : "#444",
-                  color: "white",
-                }}
-              >
-                {gender}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+        <p className="text-xs text-slate-400 mt-4 italic">
+          * BIO label updates are applied to all matching instances of this word.
+        </p>
+      </div>
     </div>
   )
 }

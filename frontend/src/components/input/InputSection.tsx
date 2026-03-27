@@ -52,34 +52,46 @@ export default function InputSection({ text, setText, setOutput }: Props) {
   }
 
   return (
-    <div className="input-shell">
-
+    <div className="space-y-4">
       <textarea
-        rows={6}
-        className="app-textarea"
-        placeholder="Enter text here..."
+        rows={14}
+        className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-y"
+        placeholder="Enter your mythological text here..."
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
 
-      <div className="input-actions">
-        <button className="primary-btn" onClick={handleSubmit}>
-          Analyze
+      <div className="flex flex-wrap items-center gap-3 pt-2">
+        <button 
+          className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          onClick={handleSubmit}
+          disabled={!text.trim() || status === "Analyzing text..."}
+        >
+          Analyze Text
         </button>
 
-        <input
-          type="file"
-          accept=".txt"
-          onChange={handleFileUpload}
-        />
+        <div className="relative">
+          <input
+            type="file"
+            id="file-upload"
+            className="sr-only"
+            accept=".txt"
+            onChange={handleFileUpload}
+          />
+          <label
+            htmlFor="file-upload"
+            className="cursor-pointer inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Upload .txt
+          </label>
+        </div>
       </div>
 
       {status && (
-        <p style={{ marginTop: "10px", opacity: 0.9 }}>
+        <p className="text-sm text-slate-500 animate-pulse mt-2">
           {status}
         </p>
       )}
-
     </div>
   )
 }
