@@ -1,6 +1,7 @@
 import axios from "axios"
 import type {
   BenchmarkPerformanceResponse,
+  FeedbackAnalysisRequest,
   FeedbackEditEvent,
   FeedbackMetricsResponse,
   LiveHealthResponse,
@@ -35,6 +36,9 @@ export const getLivePerformance = () =>
 
 export const saveFeedbackEdits = (events: FeedbackEditEvent[]) =>
   API.post<{ saved: number }>("/feedback/edits", { events })
+
+export const saveFeedbackAnalysis = (payload: FeedbackAnalysisRequest) =>
+  API.post<{ saved: number; analysis_id: string }>("/feedback/analysis", payload)
 
 export const getFeedbackPerformance = () =>
   API.get<FeedbackMetricsResponse>("/model/performance/feedback")

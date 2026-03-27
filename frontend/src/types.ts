@@ -91,6 +91,19 @@ export interface FeedbackEditEvent {
   new_bio_label: string
 }
 
+export interface FeedbackTokenLabel {
+  text: string;
+  start: number;
+  end: number;
+  bio_label: string;
+}
+
+export interface FeedbackAnalysisRequest {
+  analysis_id: string;
+  original_tokens: FeedbackTokenLabel[];
+  edited_tokens: FeedbackTokenLabel[];
+}
+
 export interface FeedbackMetricsResponse {
   user_id: string
   total_edits: number
@@ -98,5 +111,10 @@ export interface FeedbackMetricsResponse {
   changed_from_o: number
   transitions: Record<string, number>
   new_label_distribution: Record<string, number>
+  total_analyses: number;
+  total_tags_reviewed: number;
+  correct_tags: number;
+  wrong_tags: number;
+  estimated_accuracy: number;
 }
 

@@ -76,8 +76,26 @@ class FeedbackEditBatchRequest(BaseModel):
     events: List[FeedbackEditEvent]
 
 
+class FeedbackTokenLabel(BaseModel):
+    text: str
+    start: int
+    end: int
+    bio_label: str
+
+
+class FeedbackAnalysisRequest(BaseModel):
+    analysis_id: str
+    original_tokens: List[FeedbackTokenLabel]
+    edited_tokens: List[FeedbackTokenLabel]
+
+
 class FeedbackMetricsResponse(BaseModel):
     user_id: str
+    total_analyses: int
+    total_tags_reviewed: int
+    correct_tags: int
+    wrong_tags: int
+    estimated_accuracy: float
     total_edits: int
     changed_to_o: int
     changed_from_o: int

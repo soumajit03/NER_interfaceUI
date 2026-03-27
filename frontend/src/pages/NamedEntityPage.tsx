@@ -13,7 +13,7 @@ import type {
 } from "../types";
 import { Card } from "../components/ui/card";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { saveFeedbackEdits } from "../services/api";
+import { saveFeedbackAnalysis, saveFeedbackEdits } from "../services/api";
 
 const ALLOWED_BIO_LABELS = new Set([
   "O",
@@ -61,6 +61,24 @@ export default function NamedEntityPage() {
   const [spans, setSpans] = useState<EntitySpan[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [inputText, setInputText] = useState<string>("");
+  const [analysisId, setAnalysisId] = useState<string>("");
+  const [originalTokens, setOriginalTokens] = useState<Token[]>([]);
+
+  const createAnalysisId = () => {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  };
+
+  const toFeedbackTokenLabels = (tokens: Token[]) =>
+    tokens.map((token) => ({
+      text: token.text,
+      start: token.start,
+      end: token.end,
+      bio_label: token.bio_label,
+    }));
 
   const mergeTokensToSpans = (tokens: Token[], fullText: string): EntitySpan[] => {
     const merged: EntitySpan[] = [];
@@ -102,6 +120,8 @@ export default function NamedEntityPage() {
     setInputText(preloadItem.input_text);
     setOutput(preloadedOutput);
     setSpans(mergeTokensToSpans(preloadedOutput.tokens, preloadedOutput.text));
+    setOriginalTokens(preloadedOutput.tokens.map((token) => ({ ...token })));
+    setAnalysisId(createAnalysisId());
     setSelectedIndex(null);
   };
 
@@ -127,6 +147,8 @@ export default function NamedEntityPage() {
     setOutput(data);
     const mergedSpans = mergeTokensToSpans(data.tokens, data.text);
     setSpans(mergedSpans);
+    setOriginalTokens(data.tokens.map((token) => ({ ...token })));
+    setAnalysisId(createAnalysisId());
     setSelectedIndex(null);
   };
 
@@ -175,6 +197,16 @@ export default function NamedEntityPage() {
     if (feedbackEvents.length > 0) {
       saveFeedbackEdits(feedbackEvents).catch((error) => {
         console.error("Failed to persist feedback edits", error);
+      });
+    }
+
+    if (analysisId && originalTokens.length > 0) {
+      saveFeedbackAnalysis({
+        analysis_id: analysisId,
+        original_tokens: toFeedbackTokenLabels(originalTokens),
+        edited_tokens: toFeedbackTokenLabels(updatedTokens),
+      }).catch((error) => {
+        console.error("Failed to persist feedback analysis", error);
       });
     }
   };

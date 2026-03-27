@@ -11,6 +11,7 @@ from ..auth import CurrentUser, get_current_user
 from ..model_metrics import get_benchmark_metrics
 from ..schemas import (
     BenchmarkPerformanceResponse,
+    FeedbackAnalysisRequest,
     FeedbackEditBatchRequest,
     FeedbackMetricsResponse,
     LiveHealthResponse,
@@ -30,6 +31,7 @@ _error_requests = 0
 _started_at = datetime.now(timezone.utc)
 _last_request_at = None
 _feedback_events_by_user: Dict[str, List[Dict[str, str]]] = {}
+_feedback_analysis_by_user: Dict[str, Dict[str, Dict[str, object]]] = {}
 
 _allowed_bio_labels = {
     "O",
@@ -42,6 +44,72 @@ _allowed_bio_labels = {
     "B-ORG",
     "I-ORG",
 }
+
+
+def _token_key(token: dict) -> tuple:
+    return (int(token["start"]), int(token["end"]), str(token["text"]))
+
+
+def _compute_analysis_summary(original_tokens: List[dict], edited_tokens: List[dict]) -> Dict[str, object]:
+    original_map: Dict[tuple, str] = {}
+    edited_map: Dict[tuple, str] = {}
+
+    for token in original_tokens:
+        label = str(token["bio_label"])
+        if label not in _allowed_bio_labels:
+            raise HTTPException(status_code=400, detail=f"Unsupported original label: {label}")
+        original_map[_token_key(token)] = label
+
+    for token in edited_tokens:
+        label = str(token["bio_label"])
+        if label not in _allowed_bio_labels:
+            raise HTTPException(status_code=400, detail=f"Unsupported edited label: {label}")
+        edited_map[_token_key(token)] = label
+
+    all_keys = set(original_map.keys()) | set(edited_map.keys())
+    total_tags_reviewed = len(all_keys)
+
+    correct_tags = 0
+    wrong_tags = 0
+    changed_to_o = 0
+    changed_from_o = 0
+    transitions: Counter = Counter()
+    new_label_distribution: Counter = Counter()
+
+    for key in all_keys:
+        old_label = original_map.get(key, "O")
+        new_label = edited_map.get(key, "O")
+
+        new_label_distribution[new_label] += 1
+
+        if old_label == new_label:
+            correct_tags += 1
+            continue
+
+        wrong_tags += 1
+        transitions[f"{old_label}->{new_label}"] += 1
+
+        if new_label == "O" and old_label != "O":
+            changed_to_o += 1
+        if old_label == "O" and new_label != "O":
+            changed_from_o += 1
+
+    estimated_accuracy = (
+        round((correct_tags / total_tags_reviewed) * 100, 2)
+        if total_tags_reviewed > 0
+        else 0.0
+    )
+
+    return {
+        "total_tags_reviewed": total_tags_reviewed,
+        "correct_tags": correct_tags,
+        "wrong_tags": wrong_tags,
+        "estimated_accuracy": estimated_accuracy,
+        "changed_to_o": changed_to_o,
+        "changed_from_o": changed_from_o,
+        "transitions": dict(transitions),
+        "new_label_distribution": dict(new_label_distribution),
+    }
 
 
 def _iso_or_none(value):
@@ -198,6 +266,30 @@ def save_feedback_edits(
     return {"saved": len(normalized)}
 
 
+@router.post("/feedback/analysis")
+def save_feedback_analysis(
+    request: FeedbackAnalysisRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    user_id = str(current_user.get("sub") or "")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Missing user id")
+
+    summary = _compute_analysis_summary(
+        [token.model_dump() for token in request.original_tokens],
+        [token.model_dump() for token in request.edited_tokens],
+    )
+
+    with _telemetry_lock:
+        _feedback_analysis_by_user.setdefault(user_id, {})[request.analysis_id] = summary
+
+    return {
+        "saved": 1,
+        "analysis_id": request.analysis_id,
+        **summary,
+    }
+
+
 @router.get("/model/performance/feedback", response_model=FeedbackMetricsResponse)
 def get_feedback_metrics(current_user: CurrentUser = Depends(get_current_user)):
     user_id = str(current_user.get("sub") or "")
@@ -206,26 +298,58 @@ def get_feedback_metrics(current_user: CurrentUser = Depends(get_current_user)):
 
     with _telemetry_lock:
         events = list(_feedback_events_by_user.get(user_id, []))
+        analyses = dict(_feedback_analysis_by_user.get(user_id, {}))
 
-    transitions: Counter = Counter()
-    new_distribution: Counter = Counter()
-    changed_to_o = 0
-    changed_from_o = 0
+    total_analyses = len(analyses)
+    total_edits = len(events)
 
-    for event in events:
-        old_label = str(event.get("old_bio_label") or "O")
-        new_label = str(event.get("new_bio_label") or "O")
-        transitions[f"{old_label}->{new_label}"] += 1
-        new_distribution[new_label] += 1
+    if total_analyses > 0:
+        total_tags_reviewed = sum(int(item.get("total_tags_reviewed", 0)) for item in analyses.values())
+        correct_tags = sum(int(item.get("correct_tags", 0)) for item in analyses.values())
+        wrong_tags = sum(int(item.get("wrong_tags", 0)) for item in analyses.values())
+        changed_to_o = sum(int(item.get("changed_to_o", 0)) for item in analyses.values())
+        changed_from_o = sum(int(item.get("changed_from_o", 0)) for item in analyses.values())
 
-        if new_label == "O" and old_label != "O":
-            changed_to_o += 1
-        if old_label == "O" and new_label != "O":
-            changed_from_o += 1
+        transitions: Counter = Counter()
+        new_distribution: Counter = Counter()
+        for item in analyses.values():
+            transitions.update(item.get("transitions", {}))
+            new_distribution.update(item.get("new_label_distribution", {}))
+    else:
+        transitions = Counter()
+        new_distribution = Counter()
+        changed_to_o = 0
+        changed_from_o = 0
+
+        for event in events:
+            old_label = str(event.get("old_bio_label") or "O")
+            new_label = str(event.get("new_bio_label") or "O")
+            transitions[f"{old_label}->{new_label}"] += 1
+            new_distribution[new_label] += 1
+
+            if new_label == "O" and old_label != "O":
+                changed_to_o += 1
+            if old_label == "O" and new_label != "O":
+                changed_from_o += 1
+
+        total_tags_reviewed = total_edits
+        correct_tags = 0
+        wrong_tags = total_edits
+
+    estimated_accuracy = (
+        round((correct_tags / total_tags_reviewed) * 100, 2)
+        if total_tags_reviewed > 0
+        else 0.0
+    )
 
     return {
         "user_id": user_id,
-        "total_edits": len(events),
+        "total_analyses": total_analyses,
+        "total_tags_reviewed": total_tags_reviewed,
+        "correct_tags": correct_tags,
+        "wrong_tags": wrong_tags,
+        "estimated_accuracy": estimated_accuracy,
+        "total_edits": total_edits,
         "changed_to_o": changed_to_o,
         "changed_from_o": changed_from_o,
         "transitions": dict(transitions),

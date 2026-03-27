@@ -207,16 +207,35 @@ export default function ModelPerformancePage() {
       </section>
 
       <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Feedback Quality (Optional Layer)</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Feedback Validation (Optional Layer)</h2>
         <p className="text-sm text-slate-500 mt-2 mb-5">
-          These metrics are user-specific and derived from BIO label edits made in the annotator.
+          These metrics are user-specific. Unchanged BIO labels are treated as correct, and edited labels are treated as wrong.
         </p>
 
-        <div className="grid sm:grid-cols-3 gap-4 mb-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-            <div className="text-xs uppercase tracking-wide text-slate-500">Total Feedback Edits</div>
-            <div className="text-2xl font-bold text-slate-900 mt-1">{feedback?.total_edits ?? 0}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Reviewed Analyses</div>
+            <div className="text-2xl font-bold text-slate-900 mt-1">{feedback?.total_analyses ?? 0}</div>
           </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Reviewed Tags</div>
+            <div className="text-2xl font-bold text-slate-900 mt-1">{feedback?.total_tags_reviewed ?? 0}</div>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Correct / Wrong</div>
+            <div className="text-2xl font-bold text-slate-900 mt-1">
+              {feedback?.correct_tags ?? 0} / {feedback?.wrong_tags ?? 0}
+            </div>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Estimated Accuracy</div>
+            <div className="text-2xl font-bold text-slate-900 mt-1">
+              {feedback ? `${feedback.estimated_accuracy.toFixed(2)}%` : "-"}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-4 mb-5">
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
             <div className="text-xs uppercase tracking-wide text-slate-500">Changed From O</div>
             <div className="text-2xl font-bold text-slate-900 mt-1">{feedback?.changed_from_o ?? 0}</div>
@@ -225,6 +244,10 @@ export default function ModelPerformancePage() {
             <div className="text-xs uppercase tracking-wide text-slate-500">Changed To O</div>
             <div className="text-2xl font-bold text-slate-900 mt-1">{feedback?.changed_to_o ?? 0}</div>
           </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Raw Edit Events</div>
+            <div className="text-2xl font-bold text-slate-900 mt-1">{feedback?.total_edits ?? 0}</div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -232,7 +255,7 @@ export default function ModelPerformancePage() {
             <h3 className="font-semibold text-slate-800 mb-2">Transition Counts</h3>
             <div className="border border-slate-200 rounded-lg overflow-hidden">
               {!feedback || Object.keys(feedback.transitions).length === 0 ? (
-                <div className="p-3 text-sm text-slate-500">No edit transitions captured yet.</div>
+                <div className="p-3 text-sm text-slate-500">No validation transitions captured yet.</div>
               ) : (
                 Object.entries(feedback.transitions)
                   .sort((a, b) => b[1] - a[1])
@@ -247,10 +270,10 @@ export default function ModelPerformancePage() {
           </div>
 
           <div>
-            <h3 className="font-semibold text-slate-800 mb-2">Edited Label Distribution</h3>
+            <h3 className="font-semibold text-slate-800 mb-2">Final Label Distribution</h3>
             <div className="border border-slate-200 rounded-lg overflow-hidden">
               {!feedback || Object.keys(feedback.new_label_distribution).length === 0 ? (
-                <div className="p-3 text-sm text-slate-500">No edited labels available yet.</div>
+                <div className="p-3 text-sm text-slate-500">No final labels available yet.</div>
               ) : (
                 Object.entries(feedback.new_label_distribution)
                   .sort((a, b) => b[1] - a[1])
