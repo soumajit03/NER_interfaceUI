@@ -16,6 +16,54 @@ function normalizeTokensWithO(text: string, tokens: Token[]): Token[] {
   const normalized: Token[] = []
   let cursor = 0
 
+  const isAlphaNumeric = (char: string) => /[A-Za-z0-9]/.test(char)
+
+  const splitTokenBoundaryPunctuation = (token: Token): Token[] => {
+    const parts: Token[] = []
+    let left = token.start
+    let right = token.end
+
+    while (left < right && !isAlphaNumeric(text[left])) {
+      parts.push({
+        text: text[left],
+        start: left,
+        end: left + 1,
+        bio_label: "O",
+        assigned_gender: null,
+      })
+      left += 1
+    }
+
+    const trailing: number[] = []
+    while (right > left && !isAlphaNumeric(text[right - 1])) {
+      trailing.push(right - 1)
+      right -= 1
+    }
+
+    if (left < right) {
+      parts.push({
+        text: text.slice(left, right),
+        start: left,
+        end: right,
+        bio_label: token.bio_label,
+        assigned_gender: token.assigned_gender ?? null,
+      })
+    }
+
+    for (let i = trailing.length - 1; i >= 0; i -= 1) {
+      const pos = trailing[i]
+      parts.push({
+        text: text[pos],
+        start: pos,
+        end: pos + 1,
+        bio_label: "O",
+        assigned_gender: null,
+      })
+    }
+
+    return parts
+  }
+
   const appendGap = (gapStart: number, gapEnd: number) => {
     if (gapStart >= gapEnd) return
     const segment = text.slice(gapStart, gapEnd)
@@ -44,10 +92,11 @@ function normalizeTokensWithO(text: string, tokens: Token[]): Token[] {
     }
 
     if (token.start >= cursor) {
-      normalized.push({
+      const normalizedToken: Token = {
         ...token,
         text: text.slice(token.start, token.end) || token.text,
-      })
+      }
+      normalized.push(...splitTokenBoundaryPunctuation(normalizedToken))
       cursor = token.end
     }
   })

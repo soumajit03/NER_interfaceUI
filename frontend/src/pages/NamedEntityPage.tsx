@@ -84,6 +84,54 @@ function normalizeTokensWithO(text: string, tokens: Token[]): Token[] {
   const normalized: Token[] = [];
   let cursor = 0;
 
+  const isAlphaNumeric = (char: string) => /[A-Za-z0-9]/.test(char);
+
+  const splitTokenBoundaryPunctuation = (token: Token): Token[] => {
+    const parts: Token[] = [];
+    let left = token.start;
+    let right = token.end;
+
+    while (left < right && !isAlphaNumeric(text[left])) {
+      parts.push({
+        text: text[left],
+        start: left,
+        end: left + 1,
+        bio_label: "O",
+        assigned_gender: null,
+      });
+      left += 1;
+    }
+
+    const trailing: number[] = [];
+    while (right > left && !isAlphaNumeric(text[right - 1])) {
+      trailing.push(right - 1);
+      right -= 1;
+    }
+
+    if (left < right) {
+      parts.push({
+        text: text.slice(left, right),
+        start: left,
+        end: right,
+        bio_label: token.bio_label,
+        assigned_gender: token.assigned_gender ?? null,
+      });
+    }
+
+    for (let i = trailing.length - 1; i >= 0; i -= 1) {
+      const pos = trailing[i];
+      parts.push({
+        text: text[pos],
+        start: pos,
+        end: pos + 1,
+        bio_label: "O",
+        assigned_gender: null,
+      });
+    }
+
+    return parts;
+  };
+
   const appendOGap = (gapStart: number, gapEnd: number) => {
     if (gapStart >= gapEnd) return;
 
@@ -112,10 +160,12 @@ function normalizeTokensWithO(text: string, tokens: Token[]): Token[] {
     }
 
     if (token.start >= cursor) {
-      normalized.push({
+      const normalizedToken: Token = {
         ...token,
         text: text.slice(token.start, token.end) || token.text,
-      });
+      };
+
+      normalized.push(...splitTokenBoundaryPunctuation(normalizedToken));
       cursor = token.end;
     }
   });
@@ -259,6 +309,7 @@ export default function NamedEntityPage() {
   const mergeTokensToSpans = (tokens: Token[], fullText: string): EntitySpan[] => {
     const merged: EntitySpan[] = [];
     let current: EntitySpan | null = null;
+    const hasAlphaNumeric = (value: string) => /[A-Za-z0-9]/.test(value);
 
     tokens.forEach((token) => {
       if (token.bio_label.startsWith("B-")) {
@@ -280,8 +331,13 @@ export default function NamedEntityPage() {
           current = null;
         }
 
+        const tokenText = fullText.slice(token.start, token.end);
+        if (token.bio_label === "O" && !hasAlphaNumeric(tokenText)) {
+          return;
+        }
+
         merged.push({
-          text: fullText.slice(token.start, token.end),
+          text: tokenText,
           start: token.start,
           end: token.end,
           bio_label: token.bio_label,

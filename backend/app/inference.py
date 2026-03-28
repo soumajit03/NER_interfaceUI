@@ -94,6 +94,61 @@ def _ensure_full_token_coverage(tokens, text: str):
 
     return full_tokens
 
+
+def _split_boundary_punctuation(tokens, text: str):
+    """Split leading/trailing punctuation from tokens and mark punctuation as O."""
+    normalized = []
+
+    for token in sorted(tokens, key=lambda item: (int(item["start"]), int(item["end"]))):
+        start = int(token["start"])
+        end = int(token["end"])
+        label = token.get("bio_label", "O")
+
+        if end <= start:
+            continue
+
+        left = start
+        right = end
+
+        # Leading punctuation always becomes O tokens.
+        while left < right and not text[left].isalnum():
+            normalized.append({
+                "text": text[left:left + 1],
+                "start": left,
+                "end": left + 1,
+                "bio_label": "O",
+                "assigned_tag": None,
+                "assigned_gender": None,
+            })
+            left += 1
+
+        trailing_positions = []
+        while right > left and not text[right - 1].isalnum():
+            trailing_positions.append(right - 1)
+            right -= 1
+
+        if left < right:
+            normalized.append({
+                "text": text[left:right],
+                "start": left,
+                "end": right,
+                "bio_label": label,
+                "assigned_tag": None,
+                "assigned_gender": token.get("assigned_gender"),
+            })
+
+        for pos in reversed(trailing_positions):
+            normalized.append({
+                "text": text[pos:pos + 1],
+                "start": pos,
+                "end": pos + 1,
+                "bio_label": "O",
+                "assigned_tag": None,
+                "assigned_gender": None,
+            })
+
+    return normalized
+
 def predict_text(text: str):
     if not HF_SPACE_TOKEN:
         raise HTTPException(status_code=500, detail="HF_SPACE_TOKEN missing from environment.")
@@ -153,5 +208,6 @@ def predict_text(text: str):
         raise HTTPException(status_code=502, detail=f"Space API Error: {str(e)}")
 
     all_tokens = _ensure_full_token_coverage(all_tokens, text)
+    all_tokens = _split_boundary_punctuation(all_tokens, text)
 
     return {"text": text, "tokens": all_tokens}
