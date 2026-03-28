@@ -8,10 +8,63 @@ interface Props {
   text: string
 }
 
+function normalizeTokensWithO(text: string, tokens: Token[]): Token[] {
+  const sorted = [...tokens]
+    .filter((token) => token.end > token.start)
+    .sort((a, b) => a.start - b.start || a.end - b.end)
+
+  const normalized: Token[] = []
+  let cursor = 0
+
+  const appendGap = (gapStart: number, gapEnd: number) => {
+    if (gapStart >= gapEnd) return
+    const segment = text.slice(gapStart, gapEnd)
+    let i = 0
+
+    while (i < segment.length) {
+      while (i < segment.length && /\s/.test(segment[i])) i += 1
+      if (i >= segment.length) break
+
+      const chunkStart = i
+      while (i < segment.length && !/\s/.test(segment[i])) i += 1
+
+      normalized.push({
+        text: text.slice(gapStart + chunkStart, gapStart + i),
+        start: gapStart + chunkStart,
+        end: gapStart + i,
+        bio_label: "O",
+        assigned_gender: null,
+      })
+    }
+  }
+
+  sorted.forEach((token) => {
+    if (token.start > cursor) {
+      appendGap(cursor, token.start)
+    }
+
+    if (token.start >= cursor) {
+      normalized.push({
+        ...token,
+        text: text.slice(token.start, token.end) || token.text,
+      })
+      cursor = token.end
+    }
+  })
+
+  if (cursor < text.length) {
+    appendGap(cursor, text.length)
+  }
+
+  return normalized
+}
+
 export default function ExportButton({ spans, tokens, text }: Props) {
 
   const handleExport = () => {
-    const enrichedTokens = tokens.map((token) => {
+    const normalizedTokens = normalizeTokensWithO(text, tokens)
+
+    const enrichedTokens = normalizedTokens.map((token) => {
       const match = spans.find(
         (span) => token.start >= span.start && token.end <= span.end
       )

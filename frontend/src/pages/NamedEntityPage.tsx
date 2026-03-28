@@ -76,6 +76,57 @@ function applyLabelToSpanTokens(tokens: Token[], span: EntitySpan, newBioLabel: 
   });
 }
 
+function normalizeTokensWithO(text: string, tokens: Token[]): Token[] {
+  const sorted = [...tokens]
+    .filter((token) => token.end > token.start)
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  const normalized: Token[] = [];
+  let cursor = 0;
+
+  const appendOGap = (gapStart: number, gapEnd: number) => {
+    if (gapStart >= gapEnd) return;
+
+    const segment = text.slice(gapStart, gapEnd);
+    let i = 0;
+    while (i < segment.length) {
+      while (i < segment.length && /\s/.test(segment[i])) i += 1;
+      if (i >= segment.length) break;
+
+      const chunkStart = i;
+      while (i < segment.length && !/\s/.test(segment[i])) i += 1;
+
+      normalized.push({
+        text: text.slice(gapStart + chunkStart, gapStart + i),
+        start: gapStart + chunkStart,
+        end: gapStart + i,
+        bio_label: "O",
+        assigned_gender: null,
+      });
+    }
+  };
+
+  sorted.forEach((token) => {
+    if (token.start > cursor) {
+      appendOGap(cursor, token.start);
+    }
+
+    if (token.start >= cursor) {
+      normalized.push({
+        ...token,
+        text: text.slice(token.start, token.end) || token.text,
+      });
+      cursor = token.end;
+    }
+  });
+
+  if (cursor < text.length) {
+    appendOGap(cursor, text.length);
+  }
+
+  return normalized;
+}
+
 export default function NamedEntityPage() {
   const [output, setOutput] = useState<PredictionResponse | null>(null);
   const [spans, setSpans] = useState<EntitySpan[]>([]);
@@ -245,9 +296,14 @@ export default function NamedEntityPage() {
   };
 
   const loadHistoryItem = (preloadItem: PredictionHistoryItem) => {
+    const normalizedTokens = normalizeTokensWithO(
+      preloadItem.input_text,
+      preloadItem.output_tokens
+    );
+
     const preloadedOutput: PredictionResponse = {
       text: preloadItem.input_text,
-      tokens: preloadItem.output_tokens,
+      tokens: normalizedTokens,
     };
 
     setInputText(preloadItem.input_text);
@@ -259,9 +315,20 @@ export default function NamedEntityPage() {
   };
 
   const applyWorkspaceSnapshot = (snapshot: WorkspaceSnapshot) => {
+    const normalizedOutput = snapshot.output
+      ? {
+          ...snapshot.output,
+          tokens: normalizeTokensWithO(snapshot.output.text, snapshot.output.tokens),
+        }
+      : null;
+
     setInputText(snapshot.inputText);
-    setOutput(snapshot.output);
-    setSpans(snapshot.spans);
+    setOutput(normalizedOutput);
+    setSpans(
+      normalizedOutput
+        ? mergeTokensToSpans(normalizedOutput.tokens, normalizedOutput.text)
+        : snapshot.spans
+    );
     setSelectedIndex(snapshot.selectedIndex);
     setAnalysisId(snapshot.analysisId);
     setOriginalTokens(snapshot.originalTokens);

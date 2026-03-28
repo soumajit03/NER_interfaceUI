@@ -20,6 +20,80 @@ except Exception as e:
     logger.error(f"Failed to connect to Space: {str(e)}")
     client = None
 
+
+def _append_o_tokens_from_gap(tokens, text: str, gap_start: int, gap_end: int):
+    """Add O-labeled tokens for non-whitespace chunks in an uncovered text gap."""
+    if gap_start >= gap_end:
+        return
+
+    segment = text[gap_start:gap_end]
+    cursor = 0
+
+    while cursor < len(segment):
+        while cursor < len(segment) and segment[cursor].isspace():
+            cursor += 1
+        if cursor >= len(segment):
+            break
+
+        chunk_start = cursor
+        while cursor < len(segment) and not segment[cursor].isspace():
+            cursor += 1
+
+        absolute_start = gap_start + chunk_start
+        absolute_end = gap_start + cursor
+        piece_text = text[absolute_start:absolute_end]
+
+        tokens.append({
+            "text": piece_text,
+            "start": absolute_start,
+            "end": absolute_end,
+            "bio_label": "O",
+            "assigned_tag": None,
+            "assigned_gender": None,
+        })
+
+
+def _ensure_full_token_coverage(tokens, text: str):
+    """Merge overlapping entity tokens and fill uncovered ranges with O tokens."""
+    if not tokens:
+        full_tokens = []
+        _append_o_tokens_from_gap(full_tokens, text, 0, len(text))
+        return full_tokens
+
+    entity_tokens = sorted(tokens, key=lambda item: (int(item["start"]), int(item["end"])))
+    normalized_entities = []
+
+    for token in entity_tokens:
+        start = int(token["start"])
+        end = int(token["end"])
+
+        if end <= start:
+            continue
+
+        if normalized_entities and start < int(normalized_entities[-1]["end"]):
+            # Overlap guard: keep earliest entity span and skip overlapping duplicates.
+            continue
+
+        normalized_entities.append(token)
+
+    full_tokens = []
+    cursor = 0
+
+    for token in normalized_entities:
+        start = int(token["start"])
+        end = int(token["end"])
+
+        if cursor < start:
+            _append_o_tokens_from_gap(full_tokens, text, cursor, start)
+
+        full_tokens.append(token)
+        cursor = max(cursor, end)
+
+    if cursor < len(text):
+        _append_o_tokens_from_gap(full_tokens, text, cursor, len(text))
+
+    return full_tokens
+
 def predict_text(text: str):
     if not HF_SPACE_TOKEN:
         raise HTTPException(status_code=500, detail="HF_SPACE_TOKEN missing from environment.")
@@ -77,5 +151,7 @@ def predict_text(text: str):
         logger.error(f"❌ Space Inference failed: {str(e)}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=502, detail=f"Space API Error: {str(e)}")
+
+    all_tokens = _ensure_full_token_coverage(all_tokens, text)
 
     return {"text": text, "tokens": all_tokens}
