@@ -88,12 +88,15 @@ export default function AssignPanel({ spans, selectedIndex, setSpans, onApplyBio
       {/* Options Grid */}
       <div>
         <div className="flex flex-wrap gap-2">
-          {(activeTab === "tag" ? DISPLAY_BIO_OPTIONS : GENDER_OPTIONS).map((option) => {
-            const value = activeTab === "tag" ? option.canonical : option
-            const label = activeTab === "tag" ? option.display : option
-            const isSelected = activeTab === "tag" 
+          {(activeTab === "tag"
+            ? DISPLAY_BIO_OPTIONS
+            : GENDER_OPTIONS.map((option) => ({ canonical: option, display: option }))
+          ).map((option) => {
+            const value = option.canonical
+            const label = option.display
+            const isSelected = activeTab === "tag"
               ? selectedSpan.bio_label === value
-              : selectedSpan.assigned_gender === value;
+              : selectedSpan.assigned_gender === value
 
             return (
               <button
