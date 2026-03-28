@@ -1,62 +1,81 @@
 # backend/app/inference.py
 
-import torch
-from .model_loader import model, tokenizer
+import logging
+import traceback
+from fastapi import HTTPException
+from gradio_client import Client
+from .auth import _get_config_value
 
-id2label = model.config.id2label
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+HF_SPACE_TOKEN = _get_config_value("HF_SPACE_TOKEN")
+SPACE_NAME = "kingkhna/MythNER" 
+
+logger.info(f"Connecting to private Hugging Face Space: {SPACE_NAME}")
+
+try:
+    client = Client(SPACE_NAME, token=HF_SPACE_TOKEN)
+except Exception as e:
+    logger.error(f"Failed to connect to Space: {str(e)}")
+    client = None
 
 def predict_text(text: str):
-    max_length = 400  # safe margin under 512
-    all_tokens = []
-
-    for i in range(0, len(text), max_length):
-        chunk = text[i:i + max_length]
-
-        inputs = tokenizer(
-            chunk,
-            return_tensors="pt",
-            return_offsets_mapping=True,
-            truncation=True,
+    if not HF_SPACE_TOKEN:
+        raise HTTPException(status_code=500, detail="HF_SPACE_TOKEN missing from environment.")
+    if not client:
+        raise HTTPException(
+            status_code=503, 
+            detail="Could not connect to Inference Space."
         )
 
-        offset_mapping = inputs.pop("offset_mapping")[0].tolist()
-        
-        with torch.no_grad(): # Added memory-saving context recommended by HF
-            outputs = model(**inputs)
+    all_tokens = []
+    max_length = 400
 
-        predictions = torch.argmax(outputs.logits, dim=2)[0].tolist()
-        input_ids = inputs["input_ids"][0].tolist()
-        raw_tokens = tokenizer.convert_ids_to_tokens(input_ids)
-
-        for token, label_id, offset in zip(raw_tokens, predictions, offset_mapping):
-            start, end = offset
-
-            # Skip special tokens like [CLS], [SEP]
-            if start == end:
+    try:
+        # We chunk it to respect the 512 token limits
+        for i in range(0, len(text), max_length):
+            chunk = text[i:i + max_length]
+            
+            if not chunk.strip():
                 continue
 
-            global_start = start + i
-            global_end = end + i
-            piece_text = text[global_start:global_end]
-            bio_label = id2label[label_id]
+            # 🔥 THE FIX: Using the exact endpoint name revealed by your test script
+            hf_entities = client.predict(
+                text=chunk,
+                api_name="/analyze_text"
+            )
 
-            # Merge WordPiece continuation tokens (e.g., Sit + ##a)
-            if token.startswith("##") and all_tokens:
-                previous = all_tokens[-1]
-                if int(previous["end"]) == int(global_start):
-                    previous["text"] += piece_text
-                    previous["end"] = int(global_end)
-                    continue
+            for entity in hf_entities:
+                bio_label = entity.get("entity", "O")
+                start = entity.get("start", 0)
+                end = entity.get("end", 0)
+                word = entity.get("word", "")
 
-            all_tokens.append(
-                {
-                    "text": piece_text,
-                    "start": int(global_start),
-                    "end": int(global_end),
+                global_start = int(start) + i
+                global_end = int(end) + i
+                piece_text = text[global_start:global_end]
+
+                # Merge WordPiece continuation tokens
+                if word.startswith("##") and all_tokens:
+                    previous = all_tokens[-1]
+                    if int(previous["end"]) == global_start:
+                        previous["text"] += piece_text
+                        previous["end"] = global_end
+                        continue
+
+                all_tokens.append({
+                    "text": piece_text if piece_text else word,
+                    "start": global_start,
+                    "end": global_end,
                     "bio_label": bio_label,
                     "assigned_tag": None,
-                    "assigned_gender": None,
-                }
-            )
+                    "assigned_gender": None
+                })
+
+    except Exception as e:
+        logger.error(f"❌ Space Inference failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=502, detail=f"Space API Error: {str(e)}")
 
     return {"text": text, "tokens": all_tokens}
