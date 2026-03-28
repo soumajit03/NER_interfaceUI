@@ -14,7 +14,7 @@ def _workspace_root() -> Path:
 
 
 def _trainer_state_path() -> Path:
-    return _workspace_root() / "model" / "checkpoint-2810" / "trainer_state.json"
+    return _workspace_root() / "backend" / "app" / "metrics" / "trainer_state.json"
 
 
 def _safe_float(value: Any) -> Optional[float]:

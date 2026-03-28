@@ -1,5 +1,6 @@
 import type { EntitySpan } from "../../types"
 import { Trash2 } from "lucide-react"
+import { toDisplayBioLabel } from "../../lib/labelAlias"
 
 interface Props {
   spans: EntitySpan[]
@@ -54,7 +55,7 @@ export default function AssignedEntitiesPanel({ spans, setSpans }: Props) {
             <div className="flex flex-wrap justify-end gap-2 flex-1 ml-4 items-center">
               {span.bio_label !== "O" && (
                 <span className={`px-2 py-1 text-[11px] font-semibold border rounded-md whitespace-nowrap ${getTagColor(span.bio_label)}`}>
-                  {span.bio_label}
+                  {toDisplayBioLabel(span.bio_label)}
                 </span>
               )}
               {span.assigned_gender && (

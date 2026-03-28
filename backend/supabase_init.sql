@@ -36,6 +36,12 @@ create table if not exists public.uploaded_files (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.workspace_drafts (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  snapshot jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists idx_predictions_user_created
 on public.predictions (user_id, created_at desc);
 
@@ -45,6 +51,7 @@ on public.uploaded_files (user_id, created_at desc);
 alter table public.profiles enable row level security;
 alter table public.predictions enable row level security;
 alter table public.uploaded_files enable row level security;
+alter table public.workspace_drafts enable row level security;
 
 -- Profiles policies
 drop policy if exists "profiles_select_own" on public.profiles;
@@ -95,6 +102,32 @@ with check (auth.uid() = user_id);
 drop policy if exists "uploaded_files_delete_own" on public.uploaded_files;
 create policy "uploaded_files_delete_own"
 on public.uploaded_files
+for delete
+using (auth.uid() = user_id);
+
+-- Workspace draft policies
+drop policy if exists "workspace_drafts_select_own" on public.workspace_drafts;
+create policy "workspace_drafts_select_own"
+on public.workspace_drafts
+for select
+using (auth.uid() = user_id);
+
+drop policy if exists "workspace_drafts_upsert_own" on public.workspace_drafts;
+create policy "workspace_drafts_upsert_own"
+on public.workspace_drafts
+for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "workspace_drafts_update_own" on public.workspace_drafts;
+create policy "workspace_drafts_update_own"
+on public.workspace_drafts
+for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "workspace_drafts_delete_own" on public.workspace_drafts;
+create policy "workspace_drafts_delete_own"
+on public.workspace_drafts
 for delete
 using (auth.uid() = user_id);
 

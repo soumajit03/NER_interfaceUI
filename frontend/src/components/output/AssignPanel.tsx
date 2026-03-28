@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { EntitySpan } from "../../types"
+import { toDisplayBioLabel } from "../../lib/labelAlias"
 
 interface Props {
   spans: EntitySpan[]
@@ -19,6 +20,11 @@ const BIO_OPTIONS = [
   "B-ORG",
   "I-ORG",
 ]
+
+const DISPLAY_BIO_OPTIONS = BIO_OPTIONS.map((option) => ({
+  canonical: option,
+  display: toDisplayBioLabel(option),
+}))
 
 const GENDER_OPTIONS = [
   "MALE", "FEMALE", "EUNUCH", "BISEXUAL", "TRANSGENDER", "UNSPECIFIED",
@@ -82,18 +88,20 @@ export default function AssignPanel({ spans, selectedIndex, setSpans, onApplyBio
       {/* Options Grid */}
       <div>
         <div className="flex flex-wrap gap-2">
-          {(activeTab === "tag" ? BIO_OPTIONS : GENDER_OPTIONS).map((option) => {
+          {(activeTab === "tag" ? DISPLAY_BIO_OPTIONS : GENDER_OPTIONS).map((option) => {
+            const value = activeTab === "tag" ? option.canonical : option
+            const label = activeTab === "tag" ? option.display : option
             const isSelected = activeTab === "tag" 
-              ? selectedSpan.bio_label === option
-              : selectedSpan.assigned_gender === option;
+              ? selectedSpan.bio_label === value
+              : selectedSpan.assigned_gender === value;
 
             return (
               <button
-                key={option}
+                key={value}
                 onClick={() =>
                   activeTab === "tag"
-                    ? onApplyBioLabel(selectedIndex, option)
-                    : updateField("assigned_gender", option)
+                    ? onApplyBioLabel(selectedIndex, value)
+                    : updateField("assigned_gender", value)
                 }
                 className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
                   isSelected
@@ -101,7 +109,7 @@ export default function AssignPanel({ spans, selectedIndex, setSpans, onApplyBio
                     : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
-                {option}
+                {label}
               </button>
             );
           })}

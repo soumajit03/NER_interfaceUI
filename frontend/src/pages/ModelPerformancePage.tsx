@@ -9,6 +9,7 @@ import {
   getFeedbackPerformance,
   getLivePerformance,
 } from "../services/api"
+import { toDisplayBioLabel, toDisplayTransitionLabel } from "../lib/labelAlias"
 
 function fmt(value: number | null | undefined, digits = 3) {
   if (value === null || value === undefined || Number.isNaN(value)) return "-"
@@ -135,7 +136,7 @@ export default function ModelPerformancePage() {
               )}
               {perLabelRows.map((row) => (
                 <tr key={row.label} className="border-t border-slate-200">
-                  <td className="p-3 font-medium text-slate-900">{row.label}</td>
+                  <td className="p-3 font-medium text-slate-900">{toDisplayBioLabel(row.label)}</td>
                   <td className="p-3 text-slate-700">{fmt(row.precision)}</td>
                   <td className="p-3 text-slate-700">{fmt(row.recall)}</td>
                   <td className="p-3 text-slate-700">{fmt(row.f1_score)}</td>
@@ -188,7 +189,7 @@ export default function ModelPerformancePage() {
                 .sort((a, b) => b[1] - a[1])
                 .map(([label, count]) => (
                   <div key={label} className="p-3 border-t first:border-t-0 border-slate-200 flex justify-between text-sm">
-                    <span className="text-slate-700">{label}</span>
+                    <span className="text-slate-700">{toDisplayBioLabel(label)}</span>
                     <span className="font-medium text-slate-900">{count}</span>
                   </div>
                 ))}
@@ -261,7 +262,7 @@ export default function ModelPerformancePage() {
                   .sort((a, b) => b[1] - a[1])
                   .map(([transition, count]) => (
                     <div key={transition} className="p-3 border-t first:border-t-0 border-slate-200 flex justify-between text-sm">
-                      <span className="text-slate-700">{transition}</span>
+                      <span className="text-slate-700">{toDisplayTransitionLabel(transition)}</span>
                       <span className="font-medium text-slate-900">{count}</span>
                     </div>
                   ))
@@ -279,7 +280,7 @@ export default function ModelPerformancePage() {
                   .sort((a, b) => b[1] - a[1])
                   .map(([label, count]) => (
                     <div key={label} className="p-3 border-t first:border-t-0 border-slate-200 flex justify-between text-sm">
-                      <span className="text-slate-700">{label}</span>
+                      <span className="text-slate-700">{toDisplayBioLabel(label)}</span>
                       <span className="font-medium text-slate-900">{count}</span>
                     </div>
                   ))

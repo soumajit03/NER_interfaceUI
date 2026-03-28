@@ -1,5 +1,6 @@
 import type { EntitySpan, Token } from "../../types"
 import { Download } from "lucide-react"
+import { toDisplayBioLabel } from "../../lib/labelAlias"
 
 interface Props {
   spans: EntitySpan[]
@@ -18,7 +19,7 @@ export default function ExportButton({ spans, tokens, text }: Props) {
         text: token.text,
         start: token.start,
         end: token.end,
-        bio_label: token.bio_label,
+        bio_label: toDisplayBioLabel(token.bio_label),
         assigned_gender: match?.assigned_gender || null,
       }
     })
