@@ -10,12 +10,12 @@ from .routes.user_routes import router as user_router
 app = FastAPI()
 
 raw_origins = os.getenv("FRONTEND_ORIGINS", "")
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://127.0.0.1:5173")
+frontend_origin = os.getenv("FRONTEND_ORIGIN")
 
 allowed_origins = [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
-    "https://ner-interface-ui.vercel.app/"
+    "https://ner-interface-ui.vercel.app"
 ]
 
 if frontend_origin:
